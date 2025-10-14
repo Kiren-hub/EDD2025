@@ -53,8 +53,11 @@ El programa respeta el límite de overbooking y te muestra quiénes abordan (los
 
 📂 Estructura del repositorio
 EDD2025/
+
 └── Actividad3/
+
     ├── gestionpasajeros.c  # Código fuente en C
+    
     └── README.md           # ¡Este archivo, puro estilo!
 
 👨‍✈️ Autor

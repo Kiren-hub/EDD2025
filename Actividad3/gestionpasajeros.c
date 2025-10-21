@@ -6,7 +6,7 @@ typedef struct Nodo {
     char tipoDocumento[3];  // CC, TI, PA
     char numeroDocumento[20];
     char primerApellido[50];
-    char fechaNacimiento[11]; // DD/MM/AAAA (not used in this version)
+    char fechaNacimiento[11]; // DD/MM/AAAA 
     struct Nodo* anterior;
     struct Nodo* siguiente;
 } Nodo;
@@ -161,7 +161,7 @@ int main() {
             printf("Ingrese primer apellido: ");
             scanf("%49s", primerApellido);
             while (getchar() != '\n');  // Limpiar buffer
-            printf("Ingrese Fecha de nacimiento: ");
+            printf("Ingrese Fecha de nacimiento: formato(DD/MM/YYYY) ");
              scanf("%10s", fechaNacimiento);
             while (getchar() != '\n');  // Limpiar buffer
             insertarPasajero(&listaPasajeros, tipoDocumento, numeroDocumento, primerApellido, fechaNacimiento);

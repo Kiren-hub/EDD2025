@@ -26,6 +26,17 @@ typedef struct NodoArbol {
     int altura;                   // altura del nodo (para AVL)
 } NodoArbol;
 
+// ==========================================
+//       PROTOTIPOS DE FUNCIONES (Fix)
+// ==========================================
+
+// Para registrarProducto
+NodoArbol* insertar(NodoArbol *raiz, int fecha, int stock, char nombre[]);
+NodoArbol* buscarNodo(NodoArbol *actual, int fecha);
+
+// Para eliminarLote
+NodoArbol* eliminarNodoAVL(NodoArbol* raiz, int fecha);
+
 // Raíz global del árbol
 NodoArbol *raiz = NULL;
 
@@ -244,6 +255,13 @@ void registrarProducto() {
     printf("Ingrese fecha de vencimiento (AAAAMMDD): ");
     scanf("%d", &fecha);
 
+    // --- CORRECCIÓN: VALIDAR ANTES DE INSERTAR [cite: 35, 38] ---
+    if (buscarNodo(raiz, fecha) != NULL) {
+        printf("ERROR: Ya existe un lote con la fecha %d. No se puede procesar.\n", fecha);
+        return; // Nos salimos de la función sin hacer nada más
+    }
+    // -------------------------------------------------------------
+
     printf("Ingrese nombre del producto: ");
     scanf("%s", nombre);
 
@@ -313,16 +331,19 @@ NodoArbol* buscarNodo(NodoArbol *actual, int fecha) {
         return actual; // Encontrado
 }
 
-/* Cancelar pedido (Case 3.1)
-   Pide la fecha del lote, desencola el primer pedido en la cola FIFO (si existe),
-   libera su memoria y devuelve la cantidad al stock del lote.
+/* Cancelar pedido (Case 3.1) - VERSIÓN MANUAL (Sin string.h)
+   Busca el pedido por nombre de destino comparando char por char,
+   desencola, libera memoria y devuelve stock.
 */
 void cancelarPedido() {
     int fecha;
-    printf("\n=== CANCELAR PEDIDO ===\n");
+    char destino[40]; // Variable para guardar el nombre a buscar
+    
+    printf("\n=== CANCELAR PEDIDO ESPECIFICO ===\n");
     printf("Ingrese la fecha de vencimiento del lote (AAAAMMDD): ");
     scanf("%d", &fecha);
 
+    // 1. Buscar el lote en el árbol
     NodoArbol *nodo = buscarNodo(raiz, fecha);
     if (nodo == NULL) {
         printf("No se encontro un lote con esa fecha.\n");
@@ -334,20 +355,76 @@ void cancelarPedido() {
         return;
     }
 
-    // Desencolar el primer pedido(Tomar el primer pedido de la cola)
-    Pedido *cancelado = nodo->cola_head;
-    nodo->cola_head = nodo->cola_head->siguiente;
-    if (nodo->cola_head == NULL) {
-        nodo->cola_tail = NULL; // Cola quedó vacía
+    // Mostrar pedidos disponibles
+    printf("\nPedidos en este lote:\n");
+    Pedido *temp = nodo->cola_head;
+    int contador = 1;
+    while (temp != NULL) {
+        printf("%d. Destino: %s | Cantidad: %d\n", 
+               contador, temp->nombre_destino, temp->cantidad_solicitada);
+        temp = temp->siguiente;
+        contador++;
+    }
+
+    // 2. Pedir el nombre del destino a eliminar
+    printf("Ingrese el nombre del destino a cancelar (Ej: Nuqui): ");
+    scanf("%s", destino);
+
+    // Punteros para recorrer la cola
+    Pedido *anterior = NULL;
+    Pedido *actual = nodo->cola_head;
+    int encontrado = 0;
+
+    // 3. Recorrer la cola buscando el nombre MANUALMENTE
+    while (actual != NULL) {
+        // Comparar destinos manualmente
+        int i = 0;
+        int iguales = 1;
+        while (destino[i] != '\0' || actual->nombre_destino[i] != '\0') {
+            if (destino[i] != actual->nombre_destino[i]) {
+                iguales = 0;
+                break;
+            }
+            i++;
+        }
+
+        if (iguales) {
+            encontrado = 1;
+            break;
+        }
+
+        anterior = actual;
+        actual = actual->siguiente;
+    }
+
+    if (!encontrado) {
+        printf("No se encontro un pedido con ese destino.\n");
+        return;
+    }
+
+    // Eliminar el pedido de la cola
+    if (anterior == NULL) {
+        // Es el primero
+        nodo->cola_head = actual->siguiente;
+        if (nodo->cola_head == NULL) {
+            nodo->cola_tail = NULL;
+        }
+    } else {
+        // Esta en medio o al final
+        anterior->siguiente = actual->siguiente;
+        if (actual == nodo->cola_tail) {
+            nodo->cola_tail = anterior;
+        }
     }
 
     // Devolver el stock
-    nodo->stock_total += cancelado->cantidad_solicitada;
+    nodo->stock_total += actual->cantidad_solicitada;
 
     printf("\nPedido cancelado exitosamente.\n");
-    printf("Se devolvió al stock: %d unidades\n", cancelado->cantidad_solicitada);
-    
-    free(cancelado);
+    printf("Destino: %s\n", actual->nombre_destino);
+    printf("Se devolvio al stock: %d unidades\n", actual->cantidad_solicitada);
+
+    free(actual);
 }
 /* Eliminar lote completo (Case 3.2)
    Pide la fecha del lote, elimina el nodo del árbol AVL,
@@ -415,6 +492,11 @@ NodoArbol* eliminarNodoAVL(NodoArbol* raiz, int fecha) {
             // Copiar cola FIFO
             raiz->cola_head = sucesor->cola_head;
             raiz->cola_tail = sucesor->cola_tail;
+
+            // Desvinculamos la cola del sucesor para que al eliminarlo 
+            // NO borre la lista de pedidos que acabamos de mover.
+            sucesor->cola_head = NULL; 
+            sucesor->cola_tail = NULL;
 
             // Eliminar sucesor
             raiz->der = eliminarNodoAVL(raiz->der, sucesor->fecha_vencimiento);

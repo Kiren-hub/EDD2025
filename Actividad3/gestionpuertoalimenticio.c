@@ -141,7 +141,7 @@ NodoArbol* crearNodo(int fecha, int stock, char nombre[] ) {
 
 NodoArbol* insertar(NodoArbol *raiz, int fecha, int stock, char nombre[]) {
 
-    // 1. Inserción normal de ABB
+    // Paso 1. Inserción normal de ABB
     if (raiz == NULL) {
         return crearNodo(fecha, stock, nombre);
     }
@@ -152,39 +152,35 @@ NodoArbol* insertar(NodoArbol *raiz, int fecha, int stock, char nombre[]) {
     else if (fecha > raiz->fecha_vencimiento) {
         raiz->der = insertar(raiz->der, fecha, stock, nombre);
     }
-    else {
-        printf("ERROR: Ya existe un producto con esa fecha.\n");
-        return raiz;
-    }
-
-    // 2. Actualizar altura del nodo
+    
+    // Paso 2. Actualizar altura del nodo
     raiz->altura = 1 + max(altura(raiz->izq), altura(raiz->der));
 
     
-    // 3. Obtener factor de balance (Balanceo AVL)
+    // Paso 3. calcular factor de balance para ver si esta desbalanceado (Balanceo AVL) 
     int balance = obtenerBalance(raiz);
 
     // -------------------------------
-    // 4. CASOS DE ROTACIÓN DEL AVL
+    // Paso 4. CASOS DE ROTACIÓN DEL AVL(Si está desbalanceado)
     // -------------------------------
 
-    // CASO LL (Izquierda - Izquierda)
+    // CASO LL (Izquierda - Izquierda) agregar a la izquierda de la izquierda
     if (balance > 1 && fecha < raiz->izq->fecha_vencimiento) {
         return rotacionDerecha(raiz); //Rotacion derecha
     }
 
-    // CASO RR (Derecha - Derecha)
+    // CASO RR (Derecha - Derecha) agregar a la derecha de la derecha
     if (balance < -1 && fecha > raiz->der->fecha_vencimiento) {
         return rotacionIzquierda(raiz);// Rotacion izquierda
     }
 
-    // CASO LR (Izquierda - Derecha)
+    // CASO LR (Izquierda - Derecha) agregar a la derecha de la izquierda
     if (balance > 1 && fecha > raiz->izq->fecha_vencimiento) {
         raiz->izq = rotacionIzquierda(raiz->izq);
         return rotacionDerecha(raiz);// rotacion izquierda + derecha
     }
 
-    // CASO RL (Derecha - Izquierda)
+    // CASO RL (Derecha - Izquierda) agregar a la izquierda de la derecha
     if (balance < -1 && fecha < raiz->der->fecha_vencimiento) {
         raiz->der = rotacionDerecha(raiz->der);
         return rotacionIzquierda(raiz); // rotacion derecha + izquierda
@@ -296,6 +292,12 @@ void registrarPedido() {
     printf("Ingrese cantidad solicitada: ");
     scanf("%d", &nuevo->cantidad_solicitada);
 
+     // validar stock disponible:
+    if (nuevo->cantidad_solicitada > nodo->stock_total) {
+        printf("ERROR: Stock insuficiente. Disponible: %d\n", nodo->stock_total);
+        free(nuevo);
+        return;
+    }
     nuevo->siguiente = NULL;
 
     // Encolar en FIFO
@@ -387,7 +389,10 @@ void cancelarPedido() {
             }
             i++;
         }
-
+    // Verificar que ambos terminaron al mismo tiempo
+    if (destino[i] != actual->nombre_destino[i]) {
+    iguales = 0;
+        }
         if (iguales) {
             encontrado = 1;
             break;
@@ -435,7 +440,7 @@ NodoArbol* eliminarNodoAVL(NodoArbol* raiz, int fecha) {
     if (raiz == NULL)
         return NULL;
 
-    // Buscar nodo por ABB
+    // Buscar nodo por ABB a eliminar
     if (fecha < raiz->fecha_vencimiento) {
         raiz->izq = eliminarNodoAVL(raiz->izq, fecha);
     }
@@ -444,15 +449,15 @@ NodoArbol* eliminarNodoAVL(NodoArbol* raiz, int fecha) {
     }
     else {
         // ===============================
-        //        CASO ENCONTRADO
+        //        CASOS NODO ENCONTRADO
         // ===============================
 
-        // Caso 1: 0 o 1 hijo
+        // Caso 1: tiene 0 o 1 hijo
         if (raiz->izq == NULL || raiz->der == NULL) {
 
             NodoArbol *hijo = (raiz->izq != NULL) ? raiz->izq : raiz->der;
 
-            // Liberar la cola FIFO del nodo actual
+            // Primero Liberar toda la cola FIFO del nodo actual
             Pedido *p = raiz->cola_head;
             while (p != NULL) {
                 Pedido *borrar = p;
@@ -460,13 +465,13 @@ NodoArbol* eliminarNodoAVL(NodoArbol* raiz, int fecha) {
                 free(borrar);
             }
 
-            // Sin hijos
+            // Sin hijos(hijos 0)
             if (hijo == NULL) {
                 free(raiz);
                 return NULL;
             }
 
-            // Un hijo: sustituir el nodo eliminado por el hijo
+            // Si tiene Un hijo: sustituir el nodo eliminado por el hijo(lo reemplaza)
             NodoArbol *temp = hijo;
             free(raiz);
             return temp;
@@ -474,10 +479,10 @@ NodoArbol* eliminarNodoAVL(NodoArbol* raiz, int fecha) {
         else {
             // === Caso 2 hijos ===
 
-            // Sucesor inorden (menor del subárbol derecho)
+            // Buscar Sucesor inorden (menor del subárbol derecho, es decir más pequeño lado derecho)
             NodoArbol* sucesor = buscarMasCercano(raiz->der);
 
-            // Copiamos datos del sucesor
+            // CCopiar TODOS los datos del sucesor al nodo actual
             raiz->fecha_vencimiento = sucesor->fecha_vencimiento;
             raiz->stock_total = sucesor->stock_total;
 
@@ -489,7 +494,7 @@ NodoArbol* eliminarNodoAVL(NodoArbol* raiz, int fecha) {
             }
             raiz->nombre_producto[i] = '\0';
 
-            // Copiar cola FIFO
+            // Copiar cola FIFO(Mover la cola FIFO del sucesor al nodo actual)
             raiz->cola_head = sucesor->cola_head;
             raiz->cola_tail = sucesor->cola_tail;
 
@@ -498,7 +503,7 @@ NodoArbol* eliminarNodoAVL(NodoArbol* raiz, int fecha) {
             sucesor->cola_head = NULL; 
             sucesor->cola_tail = NULL;
 
-            // Eliminar sucesor
+            //  Ahora eliminar el sucesor
             raiz->der = eliminarNodoAVL(raiz->der, sucesor->fecha_vencimiento);
         }
     }
@@ -506,12 +511,14 @@ NodoArbol* eliminarNodoAVL(NodoArbol* raiz, int fecha) {
     if (raiz == NULL)
         return NULL;
 
-    // ===== Reutilizamos funciones existentes =====
+    // ===== Reutilizamos funciones existentes (actualizar altura) =====
     raiz->altura = 1 + max(altura(raiz->izq), altura(raiz->der));
 
+    // Obtener factor de balance
     int balance = obtenerBalance(raiz);
 
-    // Casos de rotación AVL (YA CREADOS)
+    // Aplicar rotaciones si esta desbalanceado
+    // (mismos 4 casos que en insertar)
     if (balance > 1 && obtenerBalance(raiz->izq) >= 0)
         return rotacionDerecha(raiz);
 

@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-
+// hecho por Jose David Aponte y Jade de los angeles 
 // Definición de las estructuras de datos fundamentales.
 
 // Estructura para los Pedidos en la Cola FIFO(Pedido va arriba porque NodoArbol la usa)
